@@ -4,10 +4,9 @@
 #include <iostream>
 #include <print>
 #include "game.h"
-using namespace Minesweeper;
 
 int main()
 {
-    Board board = Board(10, 10);
-    board.printBoard();
+    Game game = Game();
+    game.run();
 }
