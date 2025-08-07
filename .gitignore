@@ -40,7 +40,11 @@
 # debug information files
 *.dwo
 
+*.tlog
+*.user
+
 .vs/
 obj/
 bin/
 x64/
+debug/

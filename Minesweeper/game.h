@@ -33,8 +33,7 @@ private:
 
 public:	
 	Game() {
-		this->board = std::vector(rows, std::vector<Space>(columns, 
-								  Space(false, false, false, false, 0)));
+		this->board = std::vector(rows, std::vector<Space>(columns, Space(false, false, false, false, 0)));
 		setBombs();
 	}
 
