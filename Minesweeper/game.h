@@ -1,15 +1,18 @@
 ﻿#pragma once
-#include <map>
-#include <vector>
 #include <print>
+#include <vector>
 #include <utility>
-#include <format>
 #include <algorithm>
 #include <random>
 #include <ctime>
 
 class Game {
 private:
+	struct Coord {
+		int row;
+		int col;
+	};
+
 	struct Space {
 		bool is_bomb = false;
 		bool is_revealed = false;
@@ -18,14 +21,10 @@ private:
 		int num_bombs = 0;
 	};
 
-	std::map<std::string, char> spaces 
-	{
-		{"unchecked", '?'},
-		{"clear", '#'},
-		{"bomb", 'X'},
-		{"flag", 'F'}
-	};
-
+	char unchecked = '?';
+	char clear = '#';
+	char bomb = 'X';
+	char flag = 'F';
 	int rows = 10;
 	int columns = 10;
 	int num_bombs = 10;
@@ -34,38 +33,48 @@ private:
 
 public:	
 	Game() {
-		this->board = std::vector(rows, std::vector<Space>(columns, Space(false, false, false, false, 0)));
+		this->board = std::vector(rows, std::vector<Space>(columns, 
+								  Space(false, false, false, false, 0)));
+		setBombs();
+	}
+
+	void reset() {
+		this->board = std::vector(rows, std::vector<Space>(columns,
+			Space(false, false, false, false, 0)));
+		setBombs();
 	}
 
 	void run() {
 		int row;
 		int col;
 		char action;
-		std::vector<std::pair<int, int>> compass;
-		setBombs();
+		std::vector<Coord> compass;
 		
 		while (!finished()) {
 			printBoard();
+			std::println("Flags placed: {}", num_flagged);
 			row = getInt(true);
 			col = getInt(false);
 			std::print("Action: ");
 			std::cin >> action;
 
 			compass = {
-				std::pair<int, int>(row - 1, col),
-				std::pair<int, int>(row + 1, col),
-				std::pair<int, int>(row, col + 1),
-				std::pair<int, int>(row, col - 1),
-				std::pair<int, int>(row + 1, col - 1),
-				std::pair<int, int>(row + 1, col + 1),
-				std::pair<int, int>(row - 1, col - 1),
-				std::pair<int, int>(row - 1, col + 1),
+				Coord(row - 1, col),
+				Coord(row + 1, col),
+				Coord(row, col + 1),
+				Coord(row, col - 1),
+				Coord(row + 1, col - 1),
+				Coord(row + 1, col + 1),
+				Coord(row - 1, col - 1),
+				Coord(row - 1, col + 1),
 			};
 
 			switch (action) {
 				case 'c':
 					if (!board[row][col].is_revealed) {
 						if (board[row][col].is_bomb) {
+							board[row][col].is_revealed = true;
+							printBoard();
 							std::println("GAME OVER");
 							return;
 						}
@@ -74,12 +83,14 @@ public:
 						int _num_bombs = countBombs(row, col);
 						board[row][col].num_bombs = _num_bombs;
 						if (_num_bombs == 0) {
-							for (auto cords : compass) {
-								if ((cords.first >= 0 && cords.first <= 9) && (cords.second >= 0 && cords.second <= 9)) {
-									_num_bombs = countBombs(cords.first, cords.second);
-									if (!board[cords.first][cords.second].is_bomb || !board[cords.first][cords.second].is_flagged) {
-										board[cords.first][cords.second].is_revealed = true;
-										board[cords.first][cords.second].num_bombs = _num_bombs;
+							for (auto& cords : compass) {
+								if ((cords.row >= 0 && cords.row <= 9)
+									&& (cords.col >= 0 && cords.col <= 9)) {
+									_num_bombs = countBombs(cords.row, cords.col);
+									// if not flagged
+									if (!board[cords.row][cords.col].is_flagged) { 
+										board[cords.row][cords.col].is_revealed = true;
+										board[cords.row][cords.col].num_bombs = _num_bombs;
 									}
 								}
 							}
@@ -87,12 +98,18 @@ public:
 					}
 					break;
 				case 'f':
-					setSpace(row, col, "flag");
+					if (board[row][col].is_flagged) {
+						board[row][col].is_flagged = false;
+						num_flagged--;
+					}
+					else {
+						board[row][col].is_flagged = true;
+						num_flagged++;
+					}
 					break;
 			}
 		}
-		printBoard();
-
+		std::println("You Win!");
 	}
 
 	const void printBoard() {
@@ -103,14 +120,14 @@ public:
 			for (Space _space : row) {
 				if (_space.is_revealed) {
 					if (_space.num_bombs == 0)
-						std::print("{}|", spaces["clear"]);
+						std::print("{}|", clear);
 					else
 						std::print("{}|", _space.num_bombs);
 				}
 				else if (_space.is_flagged)
-					std::print("{}|", spaces["flag"]);
+					std::print("{}|", flag);
 				else
-					std::print("{}|", spaces["unchecked"]);
+					std::print("{}|", unchecked);
 			}
 			std::println();
 		}
@@ -143,12 +160,14 @@ private:
 	bool finished() {
 		for (auto& row : board) {
 			for (Space _space : row) {
+				// if space is flagged and not a bomb
 				if (_space.is_flagged && !_space.is_bomb) {
 					return false;
 				}
 			}
 		}
 
+		// if it makes it here all flags are on bombs
 		if (num_flagged == num_bombs)
 			return true;
 
@@ -172,38 +191,24 @@ private:
 		}
 	}
 
-	void setSpace(int row, int col, std::string type) {
-		if (type == "flag") {
-			if (board[row][col].is_flagged) {
-				type = "unchecked";
-				num_flagged--;
-				board[row][col].is_flagged = false;
-			}
-			else {
-				num_flagged++;
-				board[row][col].is_flagged = true;
-			}
-		}
-	}
-
 	int countBombs(int row, int col) {
 		if (!board[row][col].counted) {
 			int count = 0;
 
-			std::vector<std::pair<int, int>> compass{
-				std::pair<int, int>(row - 1, col),
-				std::pair<int, int>(row + 1, col),
-				std::pair<int, int>(row, col + 1),
-				std::pair<int, int>(row, col - 1),
-				std::pair<int, int>(row + 1, col - 1),
-				std::pair<int, int>(row + 1, col + 1),
-				std::pair<int, int>(row - 1, col - 1),
-				std::pair<int, int>(row - 1, col + 1),
+			std::vector<Coord> compass{
+				Coord(row - 1, col),
+				Coord(row + 1, col),
+				Coord(row, col + 1),
+				Coord(row, col - 1),
+				Coord(row + 1, col - 1),
+				Coord(row + 1, col + 1),
+				Coord(row - 1, col - 1),
+				Coord(row - 1, col + 1),
 			};
 
-			for (std::pair<int, int> cords : compass) {
-				if ((cords.first >= 0 && cords.first <= 9) && (cords.second >= 0 && cords.second <= 9))
-					if (board[cords.first][cords.second].is_bomb) count++;
+			for (Coord cords : compass) {
+				if ((cords.row >= 0 && cords.row <= 9) && (cords.col >= 0 && cords.col <= 9))
+					if (board[cords.row][cords.col].is_bomb) count++;
 			}
 
 			return count;
