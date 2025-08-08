@@ -8,12 +8,12 @@
 
 class Game {
 private:
-	struct Coord {
+	struct Coord { // lightweight coordinate struct
 		int row;
 		int col;
 	};
 
-	struct Space {
+	struct Space { // struct to keep track of board state
 		bool is_bomb = false;
 		bool is_revealed = false;
 		bool is_flagged = false;
@@ -25,6 +25,7 @@ private:
 	char clear = '#';
 	char bomb = 'X';
 	char flag = 'F';
+
 	int rows = 10;
 	int columns = 10;
 	int num_bombs = 10;
@@ -33,13 +34,14 @@ private:
 
 public:	
 	Game() {
-		this->board = std::vector(rows, std::vector<Space>(columns, Space(false, false, false, false, 0)));
+		this->board = std::vector(rows, 
+			std::vector<Space>(columns, Space(false, false, false, false, 0)));
 		setBombs();
 	}
 
-	void reset() {
-		this->board = std::vector(rows, std::vector<Space>(columns,
-			Space(false, false, false, false, 0)));
+	void reset() { // reset board to default state
+		this->board = std::vector(rows, 
+			std::vector<Space>(columns, Space(false, false, false, false, 0)));
 		setBombs();
 	}
 
@@ -49,7 +51,7 @@ public:
 		char action;
 		std::vector<Coord> compass;
 		
-		while (!finished()) {
+		while (!finished()) { // keep going until win or lose
 			printBoard();
 			std::println("Flags placed: {}", num_flagged);
 			row = getInt(true);
@@ -69,8 +71,9 @@ public:
 			};
 
 			switch (action) {
-				case 'c':
-					if (!board[row][col].is_revealed) {
+				case 'c': // clear square
+					if (!board[row][col].is_revealed) { 
+						// game over if player clears bomb square
 						if (board[row][col].is_bomb) {
 							board[row][col].is_revealed = true;
 							printBoard();
@@ -82,6 +85,8 @@ public:
 						int _num_bombs = countBombs(row, col);
 						board[row][col].num_bombs = _num_bombs;
 						if (_num_bombs == 0) {
+							// if player clears an empty square, 
+							// count all the bombs around it
 							for (auto& cords : compass) {
 								if ((cords.row >= 0 && cords.row <= 9)
 									&& (cords.col >= 0 && cords.col <= 9)) {
@@ -96,7 +101,7 @@ public:
 						}
 					}
 					break;
-				case 'f':
+				case 'f': // flags/unflag given square
 					if (board[row][col].is_flagged) {
 						board[row][col].is_flagged = false;
 						num_flagged--;
@@ -106,20 +111,30 @@ public:
 						num_flagged++;
 					}
 					break;
+				default: // print the useage if any other action is given
+					std::println("HELP:");
+					std::println("- Actions:");
+					std::println("-- 'c': clear square");
+					std::println("-- 'f': flag square as bomb");
+					std::println("-- 'h': help");
+					break;
 			}
 		}
 		std::println("You Win!");
 	}
 
+	// board pretty print!
 	const void printBoard() {
 		int row_num = 0;
-		std::println(" |0|1|2|3|4|5|6|7|8|9|");
+
+		std::println(" |0|1|2|3|4|5|6|7|8|9|"); // Column numbers
 		for (auto& row : this->board) {
-			std::print("{}|", row_num++);
+			std::print("{}|", row_num++); // row numbers
+
 			for (Space _space : row) {
 				if (_space.is_revealed) {
 					if (_space.num_bombs == 0)
-						std::print("{}|", clear);
+						std::print("{}|", clear); 
 					else
 						std::print("{}|", _space.num_bombs);
 				}
@@ -156,6 +171,7 @@ private:
 		}
 	}
 
+	// the win condition is flagging all the bombs
 	bool finished() {
 		for (auto& row : board) {
 			for (Space _space : row) {
@@ -173,6 +189,7 @@ private:
 		return false;
 	}
 
+	// This function sets 10 random bombs across the board
 	void setBombs() {
 		std::vector<int> positions(100);
 		for (int i = 0; i < 100; ++i) positions[i] = i;
@@ -190,10 +207,12 @@ private:
 		}
 	}
 
+	// this function counts the number of bombs surrounding the given coordinates
 	int countBombs(int row, int col) {
 		if (!board[row][col].counted) {
 			int count = 0;
 
+			// compass representing all 6 squares around the given coordinates
 			std::vector<Coord> compass{
 				Coord(row - 1, col),
 				Coord(row + 1, col),
